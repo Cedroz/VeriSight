@@ -1,0 +1,160 @@
+/**
+ * VeriSight Content Script Styles
+ */
+
+@keyframes verisight-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.verisight-blocked {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    background-color: #ffebee !important;
+}
+
+.verisight-lock-overlay {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+/* Red Screen of Death Overlay */
+#verisight-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    animation: verisight-fade-in 0.3s ease-in;
+}
+
+@keyframes verisight-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.verisight-warning-content {
+    background: #1a1a1a;
+    border: 3px solid #d32f2f;
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 600px;
+    color: #fff;
+    box-shadow: 0 8px 32px rgba(211, 47, 47, 0.5);
+    animation: verisight-pulse 2s ease-in-out infinite;
+}
+
+@keyframes verisight-pulse {
+    0%, 100% {
+        box-shadow: 0 8px 32px rgba(211, 47, 47, 0.5);
+    }
+    50% {
+        box-shadow: 0 8px 32px rgba(211, 47, 47, 0.8);
+    }
+}
+
+.verisight-header h1 {
+    color: #d32f2f;
+    margin: 0 0 20px 0;
+    font-size: 28px;
+    text-align: center;
+    text-shadow: 0 0 10px rgba(211, 47, 47, 0.5);
+}
+
+.verisight-body {
+    line-height: 1.6;
+}
+
+.verisight-score {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ff5252;
+    text-align: center;
+    margin: 20px 0;
+    padding: 10px;
+    background: rgba(211, 47, 47, 0.2);
+    border-radius: 6px;
+}
+
+.verisight-message {
+    font-size: 16px;
+    margin: 20px 0;
+    color: #ffebee;
+}
+
+.verisight-reasons {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(211, 47, 47, 0.1);
+    border-left: 4px solid #d32f2f;
+    border-radius: 4px;
+}
+
+.verisight-reasons h3 {
+    margin-top: 0;
+    color: #ff5252;
+    font-size: 18px;
+}
+
+.verisight-reasons ul {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.verisight-reasons li {
+    margin: 8px 0;
+    color: #ffcdd2;
+}
+
+.verisight-details {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.verisight-details p {
+    margin: 8px 0;
+}
+
+.verisight-actions {
+    text-align: center;
+    margin-top: 25px;
+}
+
+.verisight-override-btn {
+    background: transparent;
+    border: 1px solid #666;
+    color: #999;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.3s;
+}
+
+.verisight-override-btn:hover {
+    border-color: #d32f2f;
+    color: #ff5252;
+    background: rgba(211, 47, 47, 0.1);
+}

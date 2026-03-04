@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.db
+*.db.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Extension
+*.crx
+*.pem
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# Test files
+test_phishing_detection.py
+
+# Build artifacts
+*.zip
+dist/
+build/

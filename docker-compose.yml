@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  verisight-backend:
+    build: .
+    container_name: verisight-api
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - DB_PATH=/app/data/brands.db.json
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      # Persist database across restarts
+      - ./backend/brands.db.json:/app/data/brands.db.json
+      # Mount logs directory (if LOG_FILE is set)
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
