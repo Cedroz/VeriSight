@@ -35,6 +35,61 @@ VeriSight is a fullstack application consisting of a Python FastAPI backend and 
 - **Demo Site**: Fake PayPal page for testing
 - **Safe Indicator**: Green indicator for verified safe sites
 
+## Design Decisions
+
+### Why FastAPI?
+- **Fast, modern Python framework** perfect for real-time API responses
+- **Built-in async support** for handling concurrent requests efficiently
+- **Automatic API documentation** (Swagger/OpenAPI) for easy testing and integration
+- **Type hints and validation** ensure data integrity
+- **Lightweight** compared to Django/Flask for API-only services
+
+### Why Chrome Extension?
+- **Runs client-side** for immediate protection without server round-trips for every page
+- **Can intercept page loads** before user interaction occurs
+- **Direct DOM manipulation** allows for seamless input blocking
+- **Wide adoption** - Chrome has the largest browser market share
+- **Manifest V3** ensures future compatibility and security
+
+### Why Multi-Factor Scoring?
+- **Single detection method limitations**: URL-only checks miss visual clones; visual-only checks miss typosquatting
+- **Reduced false positives**: Combining multiple signals provides higher confidence
+- **Weighted scoring** allows fine-tuning sensitivity for different threat levels
+- **Transparency**: Users can see exactly why a site was flagged through detailed reasons
+- **Adaptability**: Easy to adjust weights or add new detection methods
+
+### Architecture Tradeoffs
+
+#### JSON File Storage vs Database
+- **Chose JSON**: Simple, no setup required, perfect for development and small-scale deployments
+- **Tradeoff**: Not suitable for high-volume production; would need migration to SQLite/PostgreSQL for scale
+- **Future**: Database migration path is straightforward given the modular design
+
+#### Screenshot-Based Detection
+- **Chose screenshots**: More accurate than URL-only analysis, catches visual clones
+- **Tradeoff**: Adds latency (~200-500ms) and requires image processing
+- **Mitigation**: Screenshots are optional; system works with URL-only analysis
+- **Future**: Could implement caching or background processing for better performance
+
+#### Client-Side Blocking
+- **Chose extension-based blocking**: Immediate protection, works offline after initial check
+- **Tradeoff**: Requires user installation and trust
+- **Alternative considered**: Server-side proxy would work but adds complexity and latency
+- **Future**: Could add server-side API for other clients (mobile apps, etc.)
+
+#### Real-Time Analysis vs Batch Processing
+- **Chose real-time**: Immediate protection when user visits suspicious site
+- **Tradeoff**: Higher server load, requires fast API responses
+- **Mitigation**: Async processing, efficient algorithms, optional caching
+- **Future**: Could add background queue for non-critical checks
+
+### Security Considerations
+- **No data storage**: Extension doesn't store user browsing history or credentials
+- **Local API**: Backend runs locally by default, keeping data private
+- **Override mechanism**: Users can bypass warnings if needed (with clear warnings)
+- **API key security**: Google Safe Browsing API key stored in environment variables
+- **Input blocking**: Prevents credential theft even if user ignores warnings
+
 ## Installation
 
 ### Prerequisites
