@@ -17,14 +17,14 @@ VeriSight is a fullstack application consisting of a Python FastAPI backend and 
 
 ## Architecture
 
-### Backend (The "Brain")
+### Backend
 - **FastAPI Server**: Python-based REST API for scam detection
 - **Brand Database**: JSON storage of brand fingerprints (logos, colors, official domains)
 - **Scam Detection Engine**: Multi-factor scoring algorithm (0-100)
 - **Google Safe Browsing API**: Real-time threat detection integration
 - **WHOIS Integration**: Domain age verification
 
-### Browser Extension (The "Body")
+### Browser Extension
 - **Chrome Extension (Manifest V3)**: Content scripts, background service worker
 - **Screenshot Capture**: Captures page viewport for visual analysis
 - **Input Blocking**: DOM manipulation to disable form fields
