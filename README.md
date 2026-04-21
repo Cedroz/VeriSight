@@ -12,6 +12,7 @@ VeriSight is a fullstack application consisting of a Python FastAPI backend and 
 - **Domain Age Detection**: Flags newly registered domains (< 30 days) that are high-risk
 - **Enhanced Typosquatting Detection**: Identifies character substitutions and suspicious domain patterns
 - **SSL Certificate Validation**: Checks for valid SSL certificates on payment/login sites
+- **Optional URL phishing ML**: Lightweight scikit-learn model (character n-gram TF-IDF + logistic regression) scores URL strings for phishing-like patterns when a trained bundle is present
 - **Automatic Input Blocking**: Blocks password, credit card, and other sensitive input fields on flagged sites
 - **Red Screen Warning**: Shows a clear, alarming warning overlay when danger is detected
 
@@ -23,6 +24,7 @@ VeriSight is a fullstack application consisting of a Python FastAPI backend and 
 - **Scam Detection Engine**: Multi-factor scoring algorithm (0-100)
 - **Google Safe Browsing API**: Real-time threat detection integration
 - **WHOIS Integration**: Domain age verification
+- **URL ML (`url_ml.py`)**: Loads `backend/models/url_phishing_bundle.joblib` at startup if available; otherwise detection runs without it
 
 ### Browser Extension
 - **Chrome Extension (Manifest V3)**: Content scripts, background service worker
@@ -177,6 +179,9 @@ The backend calculates a **Scam Score (0-100)** based on:
 6. **SSL Certificate Validation** (0-30 points):
    - Missing SSL on payment sites = 30 points
    - Invalid/expired SSL = 25 points
+7. **URL phishing ML (optional, 0-25 points)**:
+   - Only active when `backend/models/url_phishing_bundle.joblib` is installed and scikit-learn loads successfully
+   - Adds up to 25 points when the model’s phishing probability is high (see [URL phishing ML model](#url-phishing-ml-model))
 
 ### Detection Flow
 
@@ -191,12 +196,43 @@ Backend:
   - Checks domain age (WHOIS)
   - Detects typos and misspellings
   - Validates SSL certificate
+  - Optionally runs URL phishing classifier on the normalized URL string
   - Calculates scam score
 Returns result to extension
 If score ≥ 80:
   - Show red warning overlay
   - Block all input fields
 ```
+
+## URL phishing ML model
+
+This component is **optional**. The backend can load a **small supervised classifier** trained on URL-like strings. If the model file is missing or sklearn cannot be imported, the API still works and other signals drive the score.
+
+### What it does
+
+- **Technique**: `TfidfVectorizer` with character n-grams (`char_wb`, n-gram range 3–5) plus **logistic regression** in a single sklearn `Pipeline`.
+- **Input**: The URL is normalized (lowercase host + path, scheme stripped) before vectorization, matching `normalize_url_for_ml` in `backend/url_ml.py`.
+- **Output**: `phishing_probability` between 0 and 1 (estimated probability of the “phishing-like” class), bundled with `model_version` from the joblib file.
+- **Effect on scam score**: High probabilities add **up to 25** points (scaled from a probability threshold; see `ScamDetector` in `backend/scam_detector.py`). Reasons mention the model version when points are added.
+
+### Artifact location
+
+- Trained bundle (default): `backend/models/url_phishing_bundle.joblib`
+- Loader: `backend/url_ml.py` (`UrlPhishingClassifier`)
+
+### Training the bundle
+
+From the repository root (requires `scikit-learn` from `requirements.txt`):
+
+```bash
+python scripts/train_url_phishing_model.py
+```
+
+This script fits the pipeline on synthetic benign vs. phishing-style URL examples and writes `url_phishing_bundle.joblib`. For production-quality behavior you would replace or extend the training data with a real dataset; the bundled script is a minimal baseline.
+
+### API
+
+`POST /api/check-scam` responses include an optional `ml_url_risk` object: `phishing_probability`, `model_version`, `enabled`, and `error` (if prediction failed while the model was loaded).
 
 ## Brand Database
 
@@ -252,6 +288,7 @@ curl -X POST http://localhost:8001/api/brands \
     "screenshot_base64": "optional_base64_image"
   }
   ```
+  Response may include `ml_url_risk` when the optional URL model is loaded (see [URL phishing ML model](#url-phishing-ml-model)).
 - `GET /api/brands` - List all brands in database
 - `POST /api/brands` - Add a new brand
 - `POST /api/brands/lookup` - Auto-scrape brand from URL
