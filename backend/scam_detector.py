@@ -3,7 +3,7 @@ Scam Detection Engine
 Analyzes websites and returns a Scam Score (0-100)
 """
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Tuple
+from typing import Any, Optional, Dict, Tuple
 try:
     import whois
 except ImportError:
@@ -26,9 +26,15 @@ except ImportError:
 class ScamDetector:
     """Detects scam websites based on multiple factors"""
     
-    def __init__(self, brand_db: Optional[BrandDatabase] = None, safe_browsing_checker: Optional[SafeBrowsingChecker] = None):
+    def __init__(
+        self,
+        brand_db: Optional[BrandDatabase] = None,
+        safe_browsing_checker: Optional[SafeBrowsingChecker] = None,
+        url_ml: Optional[Any] = None,
+    ):
         self.brand_db = brand_db or BrandDatabase()
         self.critical_threshold = 80  # Score above this triggers blocking
+        self.url_ml = url_ml  # optional UrlPhishingClassifier
         
         # Initialize Safe Browsing checker
         if SafeBrowsingChecker is not None:
@@ -219,6 +225,10 @@ class ScamDetector:
         parsed_url = urlparse(url if url.startswith('http') else f'http://{url}')
         domain = parsed_url.netloc or parsed_url.path.split('/')[0]
         domain = domain.replace('www.', '')
+
+        ml_url_risk: Optional[Dict] = None
+        if self.url_ml:
+            ml_url_risk = self.url_ml.predict(url)
         
         # Factor 0: Google Safe Browsing API Check (CRITICAL - 100 points if threat detected)
         safe_browsing_result = None
@@ -248,7 +258,8 @@ class ScamDetector:
                             'threat_types': threat_types,
                             'platform_types': safe_browsing_result.get("platform_types", []),
                             'error': safe_browsing_result.get("error")
-                        }
+                        },
+                        'ml_url_risk': ml_url_risk,
                     }
                 elif safe_browsing_result.get("error"):
                     # API error - log but don't block
@@ -459,6 +470,18 @@ class ScamDetector:
             elif ssl_check.get('days_until_expiry', 999) < 30:
                 score += 10
                 reasons.append(f"Warning: SSL certificate expires in {ssl_check['days_until_expiry']} days")
+
+        # Factor ML: URL pattern model (char n-gram TF-IDF + logistic regression), 0-25 points
+        if ml_url_risk and ml_url_risk.get("phishing_probability") is not None:
+            p = float(ml_url_risk["phishing_probability"])
+            ml_points = min(25, int(30 * max(0.0, p - 0.42)))
+            if ml_points >= 5:
+                score += ml_points
+                ver = ml_url_risk.get("model_version") or "?"
+                reasons.append(
+                    f"ML URL risk model (v{ver}): {p:.0%} phishing-like URL pattern "
+                    f"(adds {ml_points} risk points)"
+                )
         
         # Ensure score doesn't exceed 100
         score = min(100, score)
@@ -492,5 +515,6 @@ class ScamDetector:
             'domain_age_days': domain_age_days,
             'detected_brand': detected_brand,
             'domain': domain,
-            'safe_browsing': safe_browsing_response
+            'safe_browsing': safe_browsing_response,
+            'ml_url_risk': ml_url_risk,
         }

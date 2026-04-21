@@ -22,6 +22,7 @@ try:
         HOST, PORT, ENVIRONMENT, CORS_ORIGINS, DB_PATH,
         LOG_LEVEL, LOG_FILE, get_cors_origins
     )
+    from .url_ml import UrlPhishingClassifier
 except ImportError:
     # Fallback to absolute imports (when running directly)
     from brand_fingerprints import BrandDatabase
@@ -44,6 +45,10 @@ except ImportError:
         LOG_FILE = None
         def get_cors_origins():
             return ["*"]
+    try:
+        from url_ml import UrlPhishingClassifier
+    except ImportError:
+        UrlPhishingClassifier = None  # type: ignore
 
 # Configure logging
 logging.basicConfig(
@@ -86,7 +91,16 @@ try:
             logger.warning("SafeBrowsingChecker not available. Safe Browsing checks will be disabled.")
             safe_browsing_checker = None
     
-    scam_detector = ScamDetector(brand_db, safe_browsing_checker=safe_browsing_checker)
+    url_ml = UrlPhishingClassifier.load() if UrlPhishingClassifier else None
+    if url_ml:
+        logger.info("URL ML phishing model loaded (v%s)", url_ml.version)
+    else:
+        logger.info("URL ML phishing model not loaded (optional; run scripts/train_url_phishing_model.py)")
+    scam_detector = ScamDetector(
+        brand_db,
+        safe_browsing_checker=safe_browsing_checker,
+        url_ml=url_ml,
+    )
     brand_scraper = BrandScraper()
     logger.info(f"VeriSight API initialized (Environment: {ENVIRONMENT})")
     if safe_browsing_checker and safe_browsing_checker.enabled:
@@ -108,6 +122,12 @@ class SafeBrowsingResult(BaseModel):
     platform_types: List[str]
     error: Optional[str] = None
 
+class MlUrlRisk(BaseModel):
+    phishing_probability: Optional[float] = None
+    model_version: Optional[str] = None
+    enabled: bool = True
+    error: Optional[str] = None
+
 class ScamCheckResponse(BaseModel):
     score: int
     is_scam: bool
@@ -117,6 +137,16 @@ class ScamCheckResponse(BaseModel):
     detected_brand: Optional[str]
     domain: str
     safe_browsing: Optional[SafeBrowsingResult] = None
+    ml_url_risk: Optional[MlUrlRisk] = None
+
+
+def _scam_result_to_response(result: dict) -> ScamCheckResponse:
+    out = dict(result)
+    if out.get("safe_browsing"):
+        out["safe_browsing"] = SafeBrowsingResult(**out["safe_browsing"])
+    if out.get("ml_url_risk"):
+        out["ml_url_risk"] = MlUrlRisk(**out["ml_url_risk"])
+    return ScamCheckResponse(**out)
 
 @app.get("/")
 async def root():
@@ -160,11 +190,7 @@ async def check_scam(request: ScamCheckRequest):
             logo_match=logo_match
         )
         
-        # Convert safe_browsing dict to SafeBrowsingResult if present
-        if result.get('safe_browsing'):
-            result['safe_browsing'] = SafeBrowsingResult(**result['safe_browsing'])
-        
-        return ScamCheckResponse(**result)
+        return _scam_result_to_response(result)
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error checking scam: {str(e)}")
@@ -191,11 +217,7 @@ async def upload_screenshot(file: UploadFile = File(...), url: str = Form(...)):
             logo_match=logo_match
         )
         
-        # Convert safe_browsing dict to SafeBrowsingResult if present
-        if result.get('safe_browsing'):
-            result['safe_browsing'] = SafeBrowsingResult(**result['safe_browsing'])
-        
-        return ScamCheckResponse(**result)
+        return _scam_result_to_response(result)
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing screenshot: {str(e)}")
